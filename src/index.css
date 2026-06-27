@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-wedding-champagne-light: #FAF5ED;
+  --color-wedding-champagne: #F3E5D8;
+  --color-wedding-champagne-dark: #E5D0BC;
+  --color-wedding-rose-light: #FFF5F6;
+  --color-wedding-rose: #FFCCD5;
+  --color-wedding-rose-dark: #FF8FAB;
+  --color-wedding-gold-light: #FFFDF6;
+  --color-wedding-gold: #D4AF37;
+  --color-wedding-gold-dark: #B08E22;
+  --color-wedding-burgundy-light: #8E2833;
+  --color-wedding-burgundy: #6B1B24;
+  --color-wedding-burgundy-dark: #4A1016;
+  --color-wedding-slate-light: #F8F9FA;
+  --color-wedding-slate: #6C757D;
+  --color-wedding-slate-dark: #212529;
+
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: Inter, system-ui, sans-serif;
+}
+
+/* Custom elegant scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #E5D0BC;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B08E22;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* High contrast glassmorphism cards and inputs */
+.glass-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(229, 208, 188, 0.7); /* wedding-champagne-dark border */
+  box-shadow: 0 4px 20px rgba(107, 27, 36, 0.04);
+}
+
+.glass-input {
+  background: #ffffff;
+  border: 1.5px solid rgba(229, 208, 188, 0.9);
+  color: #212529; /* Slate dark */
+}
+
+.glass-input:focus {
+  border-color: #6B1B24; /* Burgundy */
+  background: #ffffff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(107, 27, 36, 0.1);
+}
+
+.wedding-gradient {
+  background: linear-gradient(135deg, #FCF9F5 0%, #FFF5F6 100%);
+}
+
+.wedding-header-gradient {
+  background: linear-gradient(135deg, #6B1B24 0%, #4A1016 100%);
+}
+
+/* Flying Hearts Animation */
+.floating-heart {
+  position: absolute;
+  bottom: -20px;
+  color: #FF8FAB; /* wedding-rose-dark */
+  pointer-events: none;
+  animation: floatUp 12s linear infinite;
+  z-index: 1;
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) translateX(0) scale(0.5) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.35;
+  }
+  90% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: translateY(-105vh) translateX(var(--x-offset, 30px)) scale(1.1) rotate(var(--rot, 45deg));
+    opacity: 0;
+  }
+}
