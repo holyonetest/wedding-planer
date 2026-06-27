@@ -38,12 +38,13 @@
   background: #B08E22;
 }
 
-body {
+html, body {
   margin: 0;
   font-family: 'Inter', system-ui, sans-serif;
   background-color: #f8fafc;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
 }
 
 /* High contrast glassmorphism cards and inputs */
