@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Cloud, CloudOff, RefreshCw, AlertCircle } from 'lucide-react';
+import { Heart, Cloud, CloudOff, RefreshCw, AlertCircle, X } from 'lucide-react';
 import { loadState, saveState } from './utils/localStorage';
 import { supabase, isSupabaseConfigured } from './utils/supabaseClient';
 import BottomNav from './components/BottomNav';
@@ -16,6 +16,7 @@ export default function App() {
   
   // Sync status: 'offline', 'loading', 'online', 'error'
   const [syncStatus, setSyncStatus] = useState(() => isSupabaseConfigured() ? 'loading' : 'offline');
+  const [dbErrorMessage, setDbErrorMessage] = useState(null);
 
   // Keep references to prevent sync cycles
   const isSyncingFromDb = useRef(false);
@@ -44,6 +45,7 @@ export default function App() {
     try {
       setSyncStatus('loading');
       isSyncingFromDb.current = true;
+      setDbErrorMessage(null);
 
       // Fetch guests
       const { data: dbGuests, error: guestsError } = await supabase
@@ -86,6 +88,7 @@ export default function App() {
     } catch (err) {
       console.error('Error fetching data from Supabase:', err);
       setSyncStatus('error');
+      setDbErrorMessage(err.message || 'Не удалось загрузить данные из базы');
     } finally {
       isSyncingFromDb.current = false;
     }
@@ -132,13 +135,15 @@ export default function App() {
     if (!isSupabaseConfigured()) return;
 
     try {
+      setDbErrorMessage(null);
       // 1. Find deleted guests
       const deletedIds = oldGuests
         .filter(og => !newGuests.some(ng => ng.id === og.id))
         .map(og => og.id);
       
       if (deletedIds.length > 0) {
-        await supabase.from('wedding_guests').delete().in('id', deletedIds);
+        const { error: delError } = await supabase.from('wedding_guests').delete().in('id', deletedIds);
+        if (delError) throw delError;
       }
 
       // 2. Upsert added/updated guests
@@ -158,6 +163,7 @@ export default function App() {
     } catch (err) {
       console.error('Error syncing guests to database:', err);
       setSyncStatus('error');
+      setDbErrorMessage(err.message || 'Ошибка сохранения гостей в БД');
     }
   };
 
@@ -169,13 +175,15 @@ export default function App() {
     if (!isSupabaseConfigured()) return;
 
     try {
+      setDbErrorMessage(null);
       // 1. Find deleted expenses
       const deletedIds = oldExpenses
         .filter(oe => !newExpenses.some(ne => ne.id === oe.id))
         .map(oe => oe.id);
       
       if (deletedIds.length > 0) {
-        await supabase.from('wedding_expenses').delete().in('id', deletedIds);
+        const { error: delError } = await supabase.from('wedding_expenses').delete().in('id', deletedIds);
+        if (delError) throw delError;
       }
 
       // 2. Upsert added/updated expenses
@@ -194,6 +202,7 @@ export default function App() {
     } catch (err) {
       console.error('Error syncing expenses to database:', err);
       setSyncStatus('error');
+      setDbErrorMessage(err.message || 'Ошибка сохранения расходов в БД');
     }
   };
 
@@ -245,7 +254,7 @@ export default function App() {
       case 'error':
         return (
           <button onClick={fetchData} className="text-rose-500 flex items-center gap-1 text-[9px] font-bold" title="Ошибка подключения. Нажмите для повтора">
-            <AlertCircle size={14} className="stroke-[2.5]" />
+            <AlertCircle size={14} className="stroke-[2.5] animate-bounce" />
           </button>
         );
       case 'offline':
@@ -307,6 +316,26 @@ export default function App() {
           </span>
         </div>
       </header>
+
+      {/* Database Error Banner */}
+      <AnimatePresence>
+        {dbErrorMessage && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-rose-50 border-b border-rose-200 px-4 py-2 flex items-center justify-between text-xs text-rose-700 font-medium z-20 relative"
+          >
+            <div className="flex items-center gap-2 pr-4">
+              <AlertCircle size={14} className="flex-shrink-0" />
+              <span>{dbErrorMessage}</span>
+            </div>
+            <button onClick={() => setDbErrorMessage(null)} className="p-0.5 hover:bg-rose-100 rounded text-rose-500">
+              <X size={14} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Tab Panel Content */}
       <main className="flex-grow px-4 pt-6 pb-24 overflow-y-auto relative z-10">
