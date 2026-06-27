@@ -6,6 +6,7 @@ import { supabase, isSupabaseConfigured } from './utils/supabaseClient';
 import BottomNav from './components/BottomNav';
 import GuestTab from './components/GuestTab';
 import BudgetTab from './components/BudgetTab';
+import SeatingTab from './components/SeatingTab';
 
 export default function App() {
   // Helper to sort guests alphabetically by Russian locale
@@ -59,7 +60,7 @@ export default function App() {
 
       if (guestsError) throw guestsError;
 
-      // Fetch expenses (sort by created_at then id to prevent jumping)
+      // Fetch expenses
       const { data: dbExpenses, error: expensesError } = await supabase
         .from('wedding_expenses')
         .select('*')
@@ -76,6 +77,8 @@ export default function App() {
           side: g.side,
           role: g.role || '',
           attending: g.attending,
+          tableId: g.table_id || null,
+          inviteType: g.invite_type || 'registry', // Map DB snake_case to camelCase (default: 'registry')
         }))
       );
 
@@ -155,13 +158,15 @@ export default function App() {
         if (delError) throw delError;
       }
 
-      // 2. Upsert added/updated guests
+      // 2. Upsert added/updated guests (including table_id and invite_type mappings)
       const upsertData = sortedNewGuests.map(g => ({
         id: g.id,
         name: g.name,
         side: g.side,
         role: g.role || '',
         attending: g.attending,
+        table_id: g.tableId || null,
+        invite_type: g.inviteType || 'registry', // Map camelCase to database snake_case
       }));
 
       if (upsertData.length > 0) {
@@ -358,8 +363,10 @@ export default function App() {
           >
             {activeTab === 'guests' ? (
               <GuestTab guests={guests} setGuests={handleSetGuests} />
-            ) : (
+            ) : activeTab === 'budget' ? (
               <BudgetTab expenses={expenses} setExpenses={handleSetExpenses} />
+            ) : (
+              <SeatingTab guests={guests} setGuests={handleSetGuests} />
             )}
           </motion.div>
         </AnimatePresence>

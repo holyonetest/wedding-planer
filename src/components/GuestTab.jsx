@@ -1,12 +1,28 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, UserPlus, Trash2, Upload, X, Check, Filter } from 'lucide-react';
+import { Search, UserPlus, Trash2, Upload, X, Check, Clock } from 'lucide-react';
+
+const TABLES_LIST = [
+  { id: 'presidium', name: 'Президиум' },
+  { id: 'top_left', name: 'Вверху слева' },
+  { id: 'cabin_bottom_left', name: 'Кабинка внизу' },
+  { id: 'table_2', name: 'Стол №2' },
+  { id: 'table_4', name: 'Стол №4' },
+  { id: 'table_6', name: 'Стол №6' },
+  { id: 'table_1', name: 'Стол №1' },
+  { id: 'table_3', name: 'Стол №3' },
+  { id: 'table_5', name: 'Стол №5' },
+  { id: 'cabin_top_right', name: 'Кабинка вверху' },
+  { id: 'bottom_center_1', name: 'Внизу левый' },
+  { id: 'bottom_center_2', name: 'Внизу правый' },
+];
 
 export default function GuestTab({ guests, setGuests }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [newGuestName, setNewGuestName] = useState('');
   const [newGuestSide, setNewGuestSide] = useState('katya'); // 'katya' or 'sasha'
   const [newGuestRole, setNewGuestRole] = useState('');
+  const [newGuestInviteType, setNewGuestInviteType] = useState('registry'); // 'registry' or 'banquet'
   const [showImportModal, setShowImportModal] = useState(false);
   const [importText, setImportText] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -20,6 +36,11 @@ export default function GuestTab({ guests, setGuests }) {
   const countKatya = guests.filter(g => g.side === 'katya').length;
   const countSasha = guests.filter(g => g.side === 'sasha').length;
 
+  // Venue-specific counts (only count attending guests)
+  const attendingRegistry = guests.filter(g => g.attending && g.inviteType === 'registry').length;
+  const attendingBanquetOnly = guests.filter(g => g.attending && g.inviteType === 'banquet').length;
+  const totalBanquet = attendingGuests; // everyone who is attending goes to the banquet
+
   // Add guest explicitly
   const handleAddGuest = (e) => {
     if (e) e.preventDefault();
@@ -30,13 +51,16 @@ export default function GuestTab({ guests, setGuests }) {
       name: newGuestName.trim(),
       side: newGuestSide,
       role: newGuestRole.trim(),
+      inviteType: newGuestInviteType,
       attending: false,
+      tableId: null,
     };
 
     setGuests([newGuest, ...guests]);
     setNewGuestName('');
     setNewGuestRole('');
-    setIsFormOpen(false); // Close form after adding
+    setNewGuestInviteType('registry');
+    setIsFormOpen(false);
   };
 
   // Toggle attending status
@@ -46,15 +70,35 @@ export default function GuestTab({ guests, setGuests }) {
     );
   };
 
+  // Toggle invite type (ЗАГС <-> Банкет)
+  const handleToggleInviteType = (e, id) => {
+    e.stopPropagation();
+    setGuests(
+      guests.map((g) => (g.id === id ? { ...g, inviteType: g.inviteType === 'registry' ? 'banquet' : 'registry' } : g))
+    );
+  };
+
+  // Toggle guest side (Катя <-> Саша)
+  const handleToggleSide = (e, id) => {
+    e.stopPropagation();
+    setGuests(
+      guests.map((g) => (g.id === id ? { ...g, side: g.side === 'katya' ? 'sasha' : 'katya' } : g))
+    );
+  };
+
   // Delete guest
   const handleDeleteGuest = (id) => {
     setGuests(guests.filter((g) => g.id !== id));
   };
 
+  // Get table name helper
+  const getTableLabel = (tableId) => {
+    if (!tableId) return null;
+    const table = TABLES_LIST.find((t) => t.id === tableId);
+    return table ? table.name : null;
+  };
+
   // Parse bulk text import
-  // Supports formats:
-  // 1. Имя
-  // 2. Имя - Сторона (Катя/Саша) - Роль
   const handleBulkImport = () => {
     if (!importText.trim()) return;
     
@@ -70,10 +114,10 @@ export default function GuestTab({ guests, setGuests }) {
 
       if (cleanedLine.length > 0) {
         let name = cleanedLine;
-        let side = 'katya'; // default side
+        let side = 'katya';
         let role = '';
+        let inviteType = 'registry';
 
-        // Check if there's a separator like - or | or ;
         if (cleanedLine.includes('-') || cleanedLine.includes('|') || cleanedLine.includes(';')) {
           const parts = cleanedLine.split(/[\-\|;]+/).map(p => p.trim());
           name = parts[0];
@@ -89,6 +133,12 @@ export default function GuestTab({ guests, setGuests }) {
           
           if (parts[2]) {
             role = parts[2];
+            
+            // Auto-detect invitation type from role text
+            const roleLower = role.toLowerCase();
+            if (roleLower.includes('банкет') || roleLower.includes('15:00') || roleLower.includes('15 ')) {
+              inviteType = 'banquet';
+            }
           }
         }
 
@@ -97,7 +147,9 @@ export default function GuestTab({ guests, setGuests }) {
           name,
           side,
           role,
+          inviteType,
           attending: false,
+          tableId: null,
         });
       }
     });
@@ -123,18 +175,33 @@ export default function GuestTab({ guests, setGuests }) {
   return (
     <div className="pb-24">
       {/* Top Statistics Panel */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-white border-2 border-wedding-champagne-dark p-3.5 rounded-2xl text-center shadow-sm">
-          <div className="text-[10px] uppercase font-bold text-wedding-slate-dark tracking-wider">Всего</div>
-          <div className="text-2xl font-extrabold text-wedding-burgundy mt-0.5">{totalGuests}</div>
+      <div className="bg-white border-2 border-wedding-champagne-dark rounded-3xl p-4 shadow-sm mb-6 flex flex-col gap-3">
+        {/* Main counts */}
+        <div className="grid grid-cols-3 gap-2 border-b border-wedding-champagne-light pb-3">
+          <div className="text-center">
+            <div className="text-[9px] uppercase font-bold text-wedding-slate tracking-wider">Всего</div>
+            <div className="text-xl font-extrabold text-wedding-burgundy mt-0.5">{totalGuests}</div>
+          </div>
+          <div className="text-center border-x border-wedding-champagne-light">
+            <div className="text-[9px] uppercase font-bold text-wedding-rose-dark tracking-wider">Придут</div>
+            <div className="text-xl font-extrabold text-wedding-burgundy mt-0.5">{attendingGuests}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-[9px] uppercase font-bold text-wedding-gold-dark tracking-wider">Думают</div>
+            <div className="text-xl font-extrabold text-wedding-burgundy mt-0.5">{undecidedGuests}</div>
+          </div>
         </div>
-        <div className="bg-wedding-rose-light border-2 border-wedding-rose/60 p-3.5 rounded-2xl text-center shadow-sm">
-          <div className="text-[10px] uppercase font-bold text-wedding-burgundy-light tracking-wider">Придут</div>
-          <div className="text-2xl font-extrabold text-wedding-burgundy mt-0.5">{attendingGuests}</div>
-        </div>
-        <div className="bg-wedding-gold-light/40 border-2 border-wedding-gold/40 p-3.5 rounded-2xl text-center shadow-sm">
-          <div className="text-[10px] uppercase font-bold text-wedding-gold-dark tracking-wider">Думают</div>
-          <div className="text-2xl font-extrabold text-wedding-burgundy mt-0.5">{undecidedGuests}</div>
+
+        {/* Venue/Timeline Details breakdown */}
+        <div className="grid grid-cols-2 gap-2 text-[10px] text-wedding-slate-dark font-medium">
+          <div className="flex items-center gap-1.5 bg-purple-50/50 border border-purple-100 rounded-xl px-2.5 py-1.5">
+            <span className="text-purple-600 font-bold">🏛️ ЗАГС (13:00):</span>
+            <span className="font-extrabold text-wedding-burgundy">{attendingRegistry} чел.</span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-blue-50/50 border border-blue-100 rounded-xl px-2.5 py-1.5">
+            <span className="text-blue-600 font-bold">🍽️ Банкет (15:00):</span>
+            <span className="font-extrabold text-wedding-burgundy">{totalBanquet} чел.</span>
+          </div>
         </div>
       </div>
 
@@ -217,6 +284,37 @@ export default function GuestTab({ guests, setGuests }) {
                     }`}
                   >
                     Александр
+                  </button>
+                </div>
+              </div>
+
+              {/* Invite Venue Type */}
+              <div>
+                <label className="block text-[10px] font-bold text-wedding-burgundy-light uppercase tracking-wider mb-1">
+                  Куда приглашен (Время)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewGuestInviteType('registry')}
+                    className={`py-2 text-xs font-semibold rounded-xl border transition-all ${
+                      newGuestInviteType === 'registry'
+                        ? 'bg-wedding-rose text-wedding-burgundy border-wedding-rose-dark'
+                        : 'bg-white text-wedding-slate border-wedding-champagne-dark hover:bg-wedding-champagne-light'
+                    }`}
+                  >
+                    ЗАГС (13:00)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewGuestInviteType('banquet')}
+                    className={`py-2 text-xs font-semibold rounded-xl border transition-all ${
+                      newGuestInviteType === 'banquet'
+                        ? 'bg-wedding-gold-light border-wedding-gold/60 text-wedding-burgundy-dark'
+                        : 'bg-white text-wedding-slate border-wedding-champagne-dark hover:bg-wedding-champagne-light'
+                    }`}
+                  >
+                    Только Банкет (15:00)
                   </button>
                 </div>
               </div>
@@ -349,9 +447,9 @@ export default function GuestTab({ guests, setGuests }) {
                         </div>
                       </td>
 
-                      {/* Name & Role details */}
+                      {/* Name & Role & Seating details */}
                       <td className="py-3 pr-2 cursor-pointer" onClick={() => handleToggleGuest(guest.id)}>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col items-start">
                           <span
                             className={`text-sm font-semibold transition-all leading-tight ${
                               guest.attending
@@ -361,22 +459,46 @@ export default function GuestTab({ guests, setGuests }) {
                           >
                             {guest.name}
                           </span>
+                          
+                          {/* Role tag */}
                           {guest.role && (
                             <span className="text-[10px] text-wedding-slate mt-0.5 leading-tight italic">
                               {guest.role}
                             </span>
                           )}
+
+                          {/* Seating Table and Invite Type tags */}
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                            {guest.tableId && (
+                              <span className="inline-block text-[8px] font-extrabold px-1.5 py-0.5 bg-wedding-champagne border border-wedding-champagne-dark/40 text-wedding-burgundy rounded shadow-xs leading-none">
+                                📍 {getTableLabel(guest.tableId)}
+                              </span>
+                            )}
+                            <span 
+                              onClick={(e) => handleToggleInviteType(e, guest.id)}
+                              className={`inline-block text-[8px] font-extrabold px-1.5 py-0.5 rounded border leading-none cursor-pointer hover:scale-102 active:scale-98 transition-transform select-none ${
+                                guest.inviteType === 'registry'
+                                  ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100'
+                                  : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                              }`}
+                              title="Нажмите, чтобы изменить место"
+                            >
+                              {guest.inviteType === 'registry' ? '🏛️ 13:00 ЗАГС' : '🍽️ 15:00 Банкет'}
+                            </span>
+                          </div>
                         </div>
                       </td>
 
                       {/* Side column */}
                       <td className="py-3 text-right">
                         <span
-                          className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                          onClick={(e) => handleToggleSide(e, guest.id)}
+                          className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:scale-102 active:scale-98 transition-transform select-none ${
                             guest.side === 'katya'
-                              ? 'bg-wedding-rose/70 border-wedding-rose-dark/30 text-wedding-burgundy-light'
-                              : 'bg-wedding-gold-light/60 border-wedding-gold/30 text-wedding-burgundy-dark'
+                              ? 'bg-wedding-rose/70 border-wedding-rose-dark/30 text-wedding-burgundy-light hover:bg-wedding-rose'
+                              : 'bg-wedding-gold-light/60 border-wedding-gold/30 text-wedding-burgundy-dark hover:bg-wedding-gold-light'
                           }`}
+                          title="Нажмите, чтобы изменить сторону"
                         >
                           {guest.side === 'katya' ? 'Катя' : 'Саша'}
                         </span>
@@ -385,6 +507,7 @@ export default function GuestTab({ guests, setGuests }) {
                       {/* Delete column */}
                       <td className="py-3 text-right">
                         <button
+                          type="button"
                           onClick={() => handleDeleteGuest(guest.id)}
                           className="p-1 rounded-lg text-wedding-slate/40 hover:text-wedding-burgundy hover:bg-wedding-rose-light/50 transition-colors"
                         >
@@ -433,14 +556,14 @@ export default function GuestTab({ guests, setGuests }) {
                   <li>Просто имена гостей (по одному на строку).</li>
                   <li>Формат: <code className="bg-slate-100 p-0.5 rounded">Имя - Сторона - Роль</code></li>
                 </ul>
-                <p className="mt-2 italic text-wedding-burgundy-light">Например: Дмитрий Иванов - Саша - Брат Саши</p>
+                <p className="mt-2 italic text-wedding-burgundy-light">Например: Дмитрий Иванов - Саша - Брат Саши (будет приглашен в ЗАГС по умолчанию, если в роли указать "банкет" - запишется на банкет)</p>
               </div>
 
               <textarea
                 rows={6}
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
-                placeholder="Иван Смирнов - Катя - Друг невесты&#10;Дмитрий Петров - Саша - Брат Саши&#10;Елена Сидорова"
+                placeholder="Иван Смирнов - Катя - Друг невесты&#10;Дмитрий Петров - Саша - Брат Саши (банкет)&#10;Елена Сидорова"
                 className="w-full p-3 rounded-2xl border border-wedding-champagne-dark focus:ring-1 focus:ring-wedding-rose-dark outline-none text-xs placeholder-wedding-slate/50 resize-none mb-4"
               />
 
