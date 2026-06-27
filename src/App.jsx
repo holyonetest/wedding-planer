@@ -8,8 +8,13 @@ import GuestTab from './components/GuestTab';
 import BudgetTab from './components/BudgetTab';
 
 export default function App() {
-  // Load initial cache from LocalStorage
-  const [guests, setGuests] = useState(() => loadState('wedding_guests', []));
+  // Helper to sort guests alphabetically by Russian locale
+  const sortGuests = (list) => {
+    return [...list].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  };
+
+  // Load initial cache from LocalStorage and sort them
+  const [guests, setGuests] = useState(() => sortGuests(loadState('wedding_guests', [])));
   const [expenses, setExpenses] = useState(() => loadState('wedding_expenses', []));
   const [activeTab, setActiveTab] = useState('guests');
   const [hearts, setHearts] = useState([]);
@@ -50,27 +55,29 @@ export default function App() {
       // Fetch guests
       const { data: dbGuests, error: guestsError } = await supabase
         .from('wedding_guests')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
 
       if (guestsError) throw guestsError;
 
-      // Fetch expenses
+      // Fetch expenses (sort by created_at then id to prevent jumping)
       const { data: dbExpenses, error: expensesError } = await supabase
         .from('wedding_expenses')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
 
       if (expensesError) throw expensesError;
 
-      // Map DB formats to React state format
-      const formattedGuests = dbGuests.map(g => ({
-        id: g.id,
-        name: g.name,
-        side: g.side,
-        role: g.role || '',
-        attending: g.attending,
-      }));
+      // Map and sort guests alphabetically
+      const formattedGuests = sortGuests(
+        dbGuests.map(g => ({
+          id: g.id,
+          name: g.name,
+          side: g.side,
+          role: g.role || '',
+          attending: g.attending,
+        }))
+      );
 
       const formattedExpenses = dbExpenses.map(e => ({
         id: e.id,
@@ -128,9 +135,11 @@ export default function App() {
 
   // Sync state changes to Supabase (Wrapper State Setters)
   const handleSetGuests = async (newGuests) => {
+    // Sort local guests so they are alphabetical immediately
+    const sortedNewGuests = sortGuests(newGuests);
     const oldGuests = [...guests];
-    setGuests(newGuests);
-    saveState('wedding_guests', newGuests);
+    setGuests(sortedNewGuests);
+    saveState('wedding_guests', sortedNewGuests);
 
     if (!isSupabaseConfigured()) return;
 
@@ -138,7 +147,7 @@ export default function App() {
       setDbErrorMessage(null);
       // 1. Find deleted guests
       const deletedIds = oldGuests
-        .filter(og => !newGuests.some(ng => ng.id === og.id))
+        .filter(og => !sortedNewGuests.some(ng => ng.id === og.id))
         .map(og => og.id);
       
       if (deletedIds.length > 0) {
@@ -147,7 +156,7 @@ export default function App() {
       }
 
       // 2. Upsert added/updated guests
-      const upsertData = newGuests.map(g => ({
+      const upsertData = sortedNewGuests.map(g => ({
         id: g.id,
         name: g.name,
         side: g.side,
