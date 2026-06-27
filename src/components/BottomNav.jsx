@@ -10,7 +10,7 @@ export default function BottomNav({ activeTab, setActiveTab }) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 flex justify-center bg-white/80 backdrop-blur-md border-t border-wedding-champagne-dark px-4 py-2 max-w-md mx-auto shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 flex justify-center bg-white/95 backdrop-blur-md border-t border-wedding-champagne-dark px-4 pb-6 pt-3.5 max-w-md mx-auto shadow-[0_-6px_20px_rgba(107,27,36,0.06)]">
       <div className="flex w-full justify-around max-w-sm relative">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -20,7 +20,7 @@ export default function BottomNav({ activeTab, setActiveTab }) {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="flex flex-col items-center justify-center py-2 px-4 rounded-2xl relative w-20 transition-colors duration-200 focus:outline-none cursor-pointer"
+              className="flex flex-col items-center justify-center py-2.5 px-4 rounded-2xl relative w-22 transition-colors duration-200 focus:outline-none cursor-pointer"
             >
               {isActive && (
                 <motion.div
@@ -36,10 +36,10 @@ export default function BottomNav({ activeTab, setActiveTab }) {
                   isActive ? 'text-wedding-burgundy' : 'text-wedding-slate'
                 }`}
               >
-                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
               </motion.div>
               <span
-                className={`text-[9px] mt-1 font-bold tracking-wider ${
+                className={`text-[10px] mt-1.5 font-bold tracking-wider ${
                   isActive ? 'text-wedding-burgundy' : 'text-wedding-slate'
                 }`}
               >

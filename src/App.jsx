@@ -282,7 +282,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen max-w-md mx-auto bg-slate-50/70 shadow-2xl relative flex flex-col font-sans wedding-gradient border-x border-wedding-champagne-dark/40 overflow-hidden">
+    <div className="h-[100dvh] max-w-md mx-auto bg-slate-50/70 shadow-2xl relative flex flex-col font-sans wedding-gradient border-x border-wedding-champagne-dark/40 overflow-hidden">
       
       {/* Animated Floating Hearts Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
@@ -352,7 +352,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Main Tab Panel Content */}
-      <main className="flex-grow px-4 pt-6 pb-24 overflow-y-auto relative z-10">
+      <main className="flex-grow px-4 pt-6 pb-28 overflow-y-auto relative z-10">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
